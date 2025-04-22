@@ -70,7 +70,9 @@ export default function Home() {
     const animate = () => {
       requestAnimationFrame(animate);
       if (model) {
+        model.rotation.x += 0.01;
         model.rotation.y += 0.01;
+        model.rotation.z += 0.01;
       }
       renderer.render(scene, camera);
     };
