@@ -3,6 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader';
+import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import Head from 'next/head';
 
 export default function Home() {
@@ -28,6 +29,12 @@ export default function Home() {
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.target.set(0, 0, 0);
+    controls.update();
+
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
     scene.add(ambientLight);
 
@@ -36,7 +43,7 @@ export default function Home() {
     scene.add(directionalLight);
 
     const textureLoader = new THREE.TextureLoader();
-    const greenTexture = textureLoader.load('/green.png'); // Ensure this exists in /public
+    const greenTexture = textureLoader.load('/green.png');
 
     const loader = new FBXLoader();
     let model = null;
@@ -74,6 +81,7 @@ export default function Home() {
         model.rotation.y += 0.01;
         model.rotation.z += 0.01;
       }
+      controls.update();
       renderer.render(scene, camera);
     };
 
@@ -86,6 +94,7 @@ export default function Home() {
     };
 
     window.addEventListener('resize', handleResize);
+
 
     return () => {
       window.removeEventListener('resize', handleResize);
