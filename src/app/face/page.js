@@ -64,11 +64,11 @@ export default function FacePage() {
 
                     if (child.name === 'Sphere') {
                         eyeLeft = child;
-                        eyeLeft.scale.z = -0.007; // Flip on Z-axis
+                        eyeLeft.scale.z = -0.008; // Flip on Z-axis
                     }
                     if (child.name === 'Sphere1') {
                         eyeRight = child;
-                        eyeRight.scale.z = -0.007; // Flip on Z-axis
+                        eyeRight.scale.z = -0.008; // Flip on Z-axis
                     }
                 });
             },
