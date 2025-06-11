@@ -26,6 +26,7 @@ export default function RootLayout({ children }) {
             <nav className="flex gap-6 text-lg font-medium text-black">
                 <Link href="/cube" className="hover:underline">Cube</Link>
                 <Link href="/face" className="hover:underline">Face</Link>
+                <Link href="/car" className="hover:underline">car</Link>
             </nav>
         </header>
         <main>{children}</main>
