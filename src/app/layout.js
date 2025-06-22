@@ -27,6 +27,7 @@ export default function RootLayout({ children }) {
                 <Link href="/cube" className="hover:underline">Cube</Link>
                 <Link href="/face" className="hover:underline">Face</Link>
                 <Link href="/car" className="hover:underline">car</Link>
+                <Link href="/room" className="hover:underline">room</Link>
             </nav>
         </header>
         <main>{children}</main>
