@@ -8,86 +8,150 @@ import Head from 'next/head';
 
 export default function Home() {
     const containerRef = useRef(null);
+    const textMeshRef = useRef(null);
+    const sceneRef = useRef(null);
+    const digitalClockRef = useRef(null);
+
+    const updateText = (timeString) => {
+        if (!sceneRef.current || !digitalClockRef.current) return;
+
+        // Remove previous text if exists
+        if (textMeshRef.current) {
+            sceneRef.current.remove(textMeshRef.current);
+        }
+
+        // Create canvas for texture
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 1024;
+        canvas.height = 512;
+
+        // Clear with transparent background
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Draw black text
+        context.font = 'Bold 100px Arial'; // Slightly smaller font
+        context.fillStyle = '#000000';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(timeString, canvas.width / 2, canvas.height / 2);
+
+        // Create texture
+        const texture = new THREE.CanvasTexture(canvas);
+        const material = new THREE.MeshBasicMaterial({
+            map: texture,
+            transparent: true,
+            opacity: 1,
+            side: THREE.DoubleSide
+        });
+
+        // Create plane (smaller size)
+        const geometry = new THREE.PlaneGeometry(1.2, 0.6);
+
+        // Position at digital clock
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.position.copy(digitalClockRef.current.position);
+        mesh.position.z -= 0.01;
+        mesh.position.y -= 0.001;
+        mesh.rotation.copy(digitalClockRef.current.rotation);
+
+        // Flip 180 degrees
+        mesh.rotation.y += Math.PI;
+
+        // Additional scaling
+        mesh.scale.set(0.28, 0.28, 0.28);
+
+        sceneRef.current.add(mesh);
+        textMeshRef.current = mesh;
+    };
 
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
+        // Scene setup
         const scene = new THREE.Scene();
+        sceneRef.current = scene;
         scene.background = new THREE.Color(0x000000);
 
+        // Camera
         const camera = new THREE.PerspectiveCamera(
-            35, // Tighter FOV = less distortion
+            75,
             window.innerWidth / window.innerHeight,
-            0.001, // Allow zooming extremely close
+            0.1,
             1000
         );
-        camera.position.set(0, 2, 5);
+        camera.position.z = 5;
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        // Renderer
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true
+        });
         renderer.setSize(window.innerWidth, window.innerHeight);
         container.appendChild(renderer.domElement);
 
+        // Controls
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true;
         controls.dampingFactor = 0.05;
-        // No zoom limits for infinite zoom
-        controls.target.set(0, 0, 0);
-        controls.update();
 
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+        // Lighting
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         scene.add(ambientLight);
-
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-        directionalLight.position.set(5, 10, 7.5);
+        directionalLight.position.set(1, 1, 1);
         scene.add(directionalLight);
 
+        // Load GLB model
         const loader = new GLTFLoader();
-        loader.load(
-            '/room.glb',
-            (gltf) => {
-                const model = gltf.scene;
-                scene.add(model);
+        loader.load('/room.glb', (gltf) => {
+            scene.add(gltf.scene);
 
-                model.scale.set(3,3,3)
+            // Find digital clock
+            gltf.scene.traverse((child) => {
+                if (child.name.toLowerCase().includes('digitalclock')) {
+                    digitalClockRef.current = child;
+                    console.log('Digital clock found at:', child.position);
+                    updateTime();
+                }
+            });
+        });
 
-                const box = new THREE.Box3().setFromObject(model);
-                const center = new THREE.Vector3();
-                box.getCenter(center);
+        // Time update function with blinking colon
+        const updateTime = () => {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const separator = now.getSeconds() % 2 === 0 ? ':' : ' ';
+            const timeString = `${hours}${separator}${minutes}`;
+            updateText(timeString);
+        };
 
-                model.position.sub(center); // Center model at origin
-                controls.target.copy(new THREE.Vector3(0, 0, 0));
-                controls.update();
-            },
-            (xhr) => {
-                console.log((xhr.loaded / xhr.total * 100).toFixed(2) + '% loaded');
-            },
-            (error) => {
-                console.error('Error loading GLB:', error);
-            }
-        );
-
+        // Animation loop
         const animate = () => {
             requestAnimationFrame(animate);
             controls.update();
             renderer.render(scene, camera);
         };
-
         animate();
 
+        // Update time every second
+        const interval = setInterval(updateTime, 1000);
+
+        // Handle resize
         const handleResize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         };
-
         window.addEventListener('resize', handleResize);
 
+        // Cleanup
         return () => {
+            clearInterval(interval);
             window.removeEventListener('resize', handleResize);
-            if (container && renderer.domElement) {
-                container.removeChild(renderer.domElement);
-            }
+            container.removeChild(renderer.domElement);
             renderer.dispose();
         };
     }, []);
@@ -95,21 +159,14 @@ export default function Home() {
     return (
         <>
             <Head>
-                <title>GLB Viewer Fullscreen</title>
-                <meta name="description" content="Fullscreen GLB viewer with OrbitControls" />
-                <link rel="icon" href="/favicon.ico" />
-                <style>{`
-                    html, body {
-                        margin: 0;
-                        padding: 0;
-                        width: 100%;
-                        height: 100%;
-                        overflow: hidden;
-                        background: black;
-                    }
-                `}</style>
+                <title>3D Digital Clock</title>
+                <meta name="description" content="3D clock with transparent background" />
             </Head>
-            <div ref={containerRef} style={{ width: '100vw', height: '100vh' }} />
+            <div ref={containerRef} style={{
+                width: '100vw',
+                height: '100vh',
+                background: 'transparent'
+            }} />
         </>
     );
 }
