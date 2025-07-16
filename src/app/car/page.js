@@ -53,24 +53,26 @@ export default function CarPage() {
         const wheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 32);
         const wheelMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
 
-        const positions = [
-            [-0.4, 0.1, -0.9], // Front left
-            [0.4, 0.1, -0.9],  // Front right
-            [-0.4, 0.1, 0.9],  // Rear left
-            [0.4, 0.1, 0.9],   // Rear right
+        // Define wheel positions: [x, y, z]
+        const wheelPositions = [
+            [-0.5, 0.1, -0.9], // Front left
+            [0.5, 0.1, -0.9],  // Front right
+            [-0.5, 0.1, 0.9],  // Rear left
+            [0.5, 0.1, 0.9],   // Rear right
         ];
 
-        positions.forEach(([x, y, z]) => {
+        // Create and add each wheel
+        wheelPositions.forEach(([x, y, z]) => {
             const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.rotation.z = Math.PI / 2;
+            wheel.rotation.z = Math.PI / 2; // Rotate so it lays flat
             wheel.position.set(x, y, z);
             carGroup.add(wheel);
         });
 
-        // Add car group to scene
+        // Add car to scene
         scene.add(carGroup);
 
-        // === Movement ===
+        // === Movement Controls ===
         const keys = {};
         const speed = 0.1;
         const turnSpeed = 0.03;
@@ -80,18 +82,16 @@ export default function CarPage() {
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
 
+        // === Animation Loop ===
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // Forward/backward
             if (keys['w'] || keys['arrowup']) {
                 carGroup.translateZ(-speed);
             }
             if (keys['s'] || keys['arrowdown']) {
                 carGroup.translateZ(speed);
             }
-
-            // Turning
             if (keys['a'] || keys['arrowleft']) {
                 carGroup.rotation.y += turnSpeed;
             }
@@ -104,7 +104,7 @@ export default function CarPage() {
 
         animate();
 
-        // === Resize Handler ===
+        // === Handle Window Resize ===
         const handleResize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
