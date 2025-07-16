@@ -39,41 +39,64 @@ export default function CarPage() {
         ground.rotation.x = -Math.PI / 2;
         scene.add(ground);
 
-        // === Car ===
-        const carGeo = new THREE.BoxGeometry(1, 0.5, 2);
-        const carMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
-        const car = new THREE.Mesh(carGeo, carMat);
-        car.position.y = 0.25;
-        scene.add(car);
+        // === Car Group ===
+        const carGroup = new THREE.Group();
+
+        // === Car Body ===
+        const carBodyGeo = new THREE.BoxGeometry(1, 0.5, 2);
+        const carBodyMat = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+        const carBody = new THREE.Mesh(carBodyGeo, carBodyMat);
+        carBody.position.y = 0.25;
+        carGroup.add(carBody);
+
+        // === Wheels ===
+        const wheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 32);
+        const wheelMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+
+        const positions = [
+            [-0.4, 0.1, -0.9], // Front left
+            [0.4, 0.1, -0.9],  // Front right
+            [-0.4, 0.1, 0.9],  // Rear left
+            [0.4, 0.1, 0.9],   // Rear right
+        ];
+
+        positions.forEach(([x, y, z]) => {
+            const wheel = new THREE.Mesh(wheelGeo, wheelMat);
+            wheel.rotation.z = Math.PI / 2;
+            wheel.position.set(x, y, z);
+            carGroup.add(wheel);
+        });
+
+        // Add car group to scene
+        scene.add(carGroup);
 
         // === Movement ===
         const keys = {};
+        const speed = 0.1;
+        const turnSpeed = 0.03;
 
         const onKeyDown = (e) => (keys[e.key.toLowerCase()] = true);
         const onKeyUp = (e) => (keys[e.key.toLowerCase()] = false);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
 
-        const speed = 0.1;
-        const turnSpeed = 0.03;
-
         const animate = () => {
             requestAnimationFrame(animate);
 
-            // Forward/back
+            // Forward/backward
             if (keys['w'] || keys['arrowup']) {
-                car.translateZ(-speed);
+                carGroup.translateZ(-speed);
             }
             if (keys['s'] || keys['arrowdown']) {
-                car.translateZ(speed);
+                carGroup.translateZ(speed);
             }
 
-            // Rotation
+            // Turning
             if (keys['a'] || keys['arrowleft']) {
-                car.rotation.y += turnSpeed;
+                carGroup.rotation.y += turnSpeed;
             }
             if (keys['d'] || keys['arrowright']) {
-                car.rotation.y -= turnSpeed;
+                carGroup.rotation.y -= turnSpeed;
             }
 
             renderer.render(scene, camera);
