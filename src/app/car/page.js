@@ -7,11 +7,10 @@ export default function CarPage() {
     const mountRef = useRef(null);
 
     useEffect(() => {
-        // === Scene ===
+        // === Scene Setup ===
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0xbfd1e5);
 
-        // === Camera ===
         const camera = new THREE.PerspectiveCamera(
             75,
             window.innerWidth / window.innerHeight,
@@ -21,12 +20,10 @@ export default function CarPage() {
         camera.position.set(5, 5, 10);
         camera.lookAt(0, 0, 0);
 
-        // === Renderer ===
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         mountRef.current.appendChild(renderer.domElement);
 
-        // === Lighting ===
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight.position.set(5, 10, 7.5);
@@ -53,50 +50,90 @@ export default function CarPage() {
         const wheelGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.1, 32);
         const wheelMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
 
-        // Define wheel positions: [x, y, z]
-        const wheelPositions = [
-            [-0.5, 0.1, -0.9], // Front left
-            [0.5, 0.1, -0.9],  // Front right
-            [-0.5, 0.1, 0.9],  // Rear left
-            [0.5, 0.1, 0.9],   // Rear right
-        ];
+        const frontLeftPivot = new THREE.Group();
+        const frontRightPivot = new THREE.Group();
 
-        // Create and add each wheel
-        wheelPositions.forEach(([x, y, z]) => {
+        const createWheel = (x, y, z) => {
             const wheel = new THREE.Mesh(wheelGeo, wheelMat);
-            wheel.rotation.z = Math.PI / 2; // Rotate so it lays flat
+            wheel.rotation.z = Math.PI / 2;
             wheel.position.set(x, y, z);
-            carGroup.add(wheel);
-        });
+            return wheel;
+        };
 
-        // Add car to scene
+        // Front Left
+        const frontLeftWheel = createWheel(0, 0, 0);
+        frontLeftPivot.add(frontLeftWheel);
+        frontLeftPivot.position.set(-0.5, 0.1, -0.9);
+        carGroup.add(frontLeftPivot);
+
+        // Front Right
+        const frontRightWheel = createWheel(0, 0, 0);
+        frontRightPivot.add(frontRightWheel);
+        frontRightPivot.position.set(0.5, 0.1, -0.9);
+        carGroup.add(frontRightPivot);
+
+        // Rear Left
+        const rearLeftWheel = createWheel(-0.5, 0.1, 0.9);
+        carGroup.add(rearLeftWheel);
+
+        // Rear Right
+        const rearRightWheel = createWheel(0.5, 0.1, 0.9);
+        carGroup.add(rearRightWheel);
+
+        // Add car group to scene
         scene.add(carGroup);
 
-        // === Movement Controls ===
+        // === Movement & Steering ===
         const keys = {};
         const speed = 0.1;
-        const turnSpeed = 0.03;
+        const turnSpeed = 0.02;
+        let wheelSteerAngle = 0;
+        const maxSteerAngle = Math.PI / 6; // 30 degrees
 
         const onKeyDown = (e) => (keys[e.key.toLowerCase()] = true);
         const onKeyUp = (e) => (keys[e.key.toLowerCase()] = false);
         window.addEventListener('keydown', onKeyDown);
         window.addEventListener('keyup', onKeyUp);
 
-        // === Animation Loop ===
         const animate = () => {
             requestAnimationFrame(animate);
 
+            // --- Steering logic ---
+            if (keys['a'] || keys['arrowleft']) {
+                wheelSteerAngle = Math.min(wheelSteerAngle + 0.02, maxSteerAngle);
+            } else if (keys['d'] || keys['arrowright']) {
+                wheelSteerAngle = Math.max(wheelSteerAngle - 0.02, -maxSteerAngle);
+            } else {
+                // Gradually return to center
+                if (wheelSteerAngle > 0) wheelSteerAngle -= 0.02;
+                if (wheelSteerAngle < 0) wheelSteerAngle += 0.02;
+                if (Math.abs(wheelSteerAngle) < 0.01) wheelSteerAngle = 0;
+            }
+
+            // Rotate front wheels visually
+            frontLeftPivot.rotation.y = wheelSteerAngle;
+            frontRightPivot.rotation.y = wheelSteerAngle;
+
+            // --- Move forward/backward ---
             if (keys['w'] || keys['arrowup']) {
-                carGroup.translateZ(-speed);
+                const direction = new THREE.Vector3(0, 0, -1);
+                direction.applyQuaternion(carGroup.quaternion);
+                carGroup.position.add(direction.multiplyScalar(speed));
             }
             if (keys['s'] || keys['arrowdown']) {
-                carGroup.translateZ(speed);
+                const direction = new THREE.Vector3(0, 0, 1);
+                direction.applyQuaternion(carGroup.quaternion);
+                carGroup.position.add(direction.multiplyScalar(speed));
             }
-            if (keys['a'] || keys['arrowleft']) {
-                carGroup.rotation.y += turnSpeed;
-            }
-            if (keys['d'] || keys['arrowright']) {
-                carGroup.rotation.y -= turnSpeed;
+
+            // --- Rotate car body based on steering ---
+            if (Math.abs(wheelSteerAngle) > 0.001) {
+                if (keys['w'] || keys['arrowup']) {
+                    carGroup.rotation.y += wheelSteerAngle * 0.05; // forward
+                }
+                if (keys['s'] || keys['arrowdown']) {
+                    carGroup.rotation.y -= wheelSteerAngle * 0.05; // reverse
+                }
             }
 
             renderer.render(scene, camera);
@@ -104,7 +141,7 @@ export default function CarPage() {
 
         animate();
 
-        // === Handle Window Resize ===
+        // === Resize Handling ===
         const handleResize = () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
